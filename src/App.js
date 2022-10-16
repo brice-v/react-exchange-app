@@ -4,18 +4,21 @@ import Select from 'react-select'
 
 function App() {
   const [data, setData] = useState(null);
-  const [numToConvert, setNumToConvert] = useState(9999);
+  const [numToConvert, setNumToConvert] = useState(1);
   const handleNumToConvert = (event) => {
     setNumToConvert(event.target.value);
   }
   // const data = await (await fetch(`https://jsonplaceholder.typicode.com/albums/${id}`)).json()
   const convert = async () => {
     console.log(numToConvert);
-    // console.log(fromBaseCurrency);
-    // console.log(toCurrency);
-    // let resp = await get_rates(fromBaseCurrency);
-    // // call api and calculate
-    // setData(resp);
+    var isFromValue = document.getElementsByName('isFrom')[0].value;
+    var isToValue = document.getElementsByName('isTo')[0].value;
+    let resp = await get_rates(isFromValue, isToValue);
+    console.log(`resp = ${JSON.stringify(resp)}`);
+    let multiplier = resp.info.rate;
+    let dataResp = `${numToConvert} ${isFromValue} is ${numToConvert*multiplier} ${isToValue}`;
+    console.log(`numToConvert ${numToConvert} ${isFromValue} is ${numToConvert*multiplier} ${isToValue}`)
+    setData(dataResp);
   }
   return (
     <div>Convert
@@ -25,7 +28,7 @@ function App() {
     to
     <SelectBaseRates />
     <button type="submit" onClick={convert}>Convert!</button>
-    <div id="result">{data}</div>
+    <div id="result">{data === null ? '' : <h1>{data}</h1>}</div>
     </div>
   );
 }
@@ -33,25 +36,28 @@ function App() {
 function SelectBaseRates(props) {
   // console.log(props.isFrom);
   const [apiResp, setApiResp] = useState([]);
-  const [state, setState] = useState({label: 'USD', value: 'USD'});
+  const [state, setState] = useState(props.isFrom ? {label: 'USD', value: 'USD'} : apiResp[0]);
   const handleInputChange = (newValue) => {
-    console.log(newValue);
-    setState({label: newValue, value: newValue});
+    setState({label: newValue.label, value: newValue.value});
   }
   const get_conversion_rates = async () => {
     return await fetch_base_rates("USD");
   }
 
   useEffect(() => {
-    get_conversion_rates().then(result => setApiResp(result));
+    get_conversion_rates().then(result => {
+      setApiResp(result)
+      console.log(result);
+    });
   });
 
   return (
       <Select
         defaultValue={props.isFrom ? {label: 'USD', value: 'USD'} : apiResp[0]}
         value={state}
-        onInputChange={handleInputChange}
-        options={apiResp}/>
+        onChange={handleInputChange}
+        options={apiResp}
+        name={props.isFrom ? "isFrom" : "isTo"}/>
   );
 }
 
@@ -66,10 +72,10 @@ async function fetch_base_rates(base) {
   return rates;
 }
 
-async function get_rates(base) {
-  let resp = await fetch(get_api_url(base));
+async function get_rates(from, to) {
+  let resp = await fetch(`https://api.exchangerate.host/convert?from=${from}&to=${to}`);
   let resp_json = await resp.json();
-  return JSON.stringify(resp_json);
+  return resp_json;
 }
 
 
